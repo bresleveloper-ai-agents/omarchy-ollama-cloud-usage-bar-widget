@@ -12,7 +12,7 @@ changing anything.
 - **Not published yet.** No git remote. The user wants to share it
   eventually. Before publishing:
   1. Add a remote and push. Agents publish with the **agents' GitHub
-     account JarvisDeLaAri**, not the user's personal GitHub; see
+     account bresleveloper-ai-agents**, not the user's personal GitHub; see
      `~/Projects/agents-data/README.md`. Confirm with the user which account
      and whether public or private before pushing.
   2. Replace `<this repo>` in README with the URL.
