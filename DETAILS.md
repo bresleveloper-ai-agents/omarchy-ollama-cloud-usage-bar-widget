@@ -41,6 +41,29 @@ changing anything.
   approach was fully removed (§6).
 - **Next ideas:** see §9.
 
+## 0.05 Marketplace readiness (checked 2026-09-28)
+
+Checked against the marketplace's own code (clone of
+omacom/omarchy-plugin-marketplace, `scripts/build-catalog.mjs`
+`validateManifest` and `scripts/security-baseline-scanner.mjs`
+`runSecurityBaseline`, run against the pushed commit):
+- **Manifest:** valid as a community plugin.
+- **Security baseline:** outcome `passed`, disposition `clear`, 0 findings
+  and 0 capabilities. The scanned files were LICENSE, Panel.qml, README.md
+  and collect.py.
+- **Repo:** public; root README, LICENSE and preview.png present; no
+  symlinks; entry point present; ID neither listed nor retired.
+- **Display name:** changed to "Ollama Cloud Usage Bar Widget" because
+  GePi0's listed plugin is already called "Ollama Cloud Usage".
+- **Keep it passing:** avoid the words sudo, pkexec, systemctl, systemd-run
+  and curl|sh in the README and code. They add review capabilities or
+  findings. The scan checks each new commit before an update is published.
+- **Submission:** an issue titled "[Plugin]: Ollama Cloud Usage Bar Widget"
+  in omacom/omarchy-plugin-marketplace, using the SUBMISSION.md body format
+  with category Widgets and tags ai, bar, quickshell.
+- **Updates after listing:** use the "Plugin verification" form with
+  "Verify and publish a newer upstream commit" and the full 40-character SHA.
+
 ## 0.1 Plugin ID rename (2026-09-28)
 
 The ID changed from `ariel.ollama-usage` to
