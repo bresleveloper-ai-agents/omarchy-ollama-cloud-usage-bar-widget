@@ -78,6 +78,10 @@ Set with `omarchy bar set ariel.ollama-usage <key> <value>`:
 omarchy plugin remove ariel.ollama-usage
 ```
 
+## Author
+
+ariel: ariel.rubi@gmail.com
+
 ## Credits
 
 The Ollama mark in `assets/` comes from

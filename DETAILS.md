@@ -22,6 +22,11 @@ changing anything.
   whether commits should keep the author email `ariel.rubi@gmail.com`.
   Marketplace submission: github.com/omacom/omarchy-plugin-marketplace
   (GePi0's issue #7629 is a template).
+- **Identities:** commits are made as `ariel <arielbattlenet@gmail.com>`,
+  the agents' GitHub email, set in this repo's `.git/config`. Human-facing
+  contact in README and LICENSE is `ariel.rubi@gmail.com`. Don't swap them.
+  History was rewritten once, on 2026-09-28 right after the first push, to
+  move commits from ariel.rubi@ to arielbattlenet@.
 - **Secrets:** the API key lives **outside** the repo at
   `~/.config/omarchy/ollama-usage/api.key`. `.gitignore` also blocks `*.key`,
   `.env*` and state files. Before any push, re-check with
