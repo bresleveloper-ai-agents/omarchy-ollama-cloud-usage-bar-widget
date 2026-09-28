@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "ariel.ollama-usage",
+  "name": "Ollama Cloud Usage",
+  "version": "1.0.0",
+  "author": "ariel",
+  "license": "MIT",
+  "description": "Ollama Cloud session and weekly limits with per-model request counts, from ollama.com's usage API.",
+  "kinds": ["bar-widget"],
+  "activation": "on-demand",
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Ollama Cloud Usage",
+    "description": "Session and weekly limit meters plus requests by model for each window.",
+    "category": "AI",
+    "aliases": ["ollama", "ollama-usage"],
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "refreshIntervalSec": 900,
+      "icon": "󱚤",
+      "showPercent": "Off"
+    },
+    "schema": [
+      { "key": "refreshIntervalSec", "type": "integer", "label": "Refresh interval (seconds)", "min": 60, "max": 3600, "step": 60, "defaultValue": 900 },
+      { "key": "icon", "type": "string", "label": "Bar icon", "defaultValue": "󱚤", "description": "Any Nerd Font glyph." },
+      { "key": "showPercent", "type": "enum", "label": "Show usage % in the bar", "options": ["Off", "On"], "defaultValue": "Off", "description": "When On, the bar shows the fullest window's percentage next to the icon." }
+    ]
+  }
+}

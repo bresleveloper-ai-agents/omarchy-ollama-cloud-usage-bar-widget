@@ -1,0 +1,86 @@
+# Ollama Cloud Usage for the Omarchy bar
+
+A small Omarchy bar widget that shows how much of your **Ollama Cloud** plan
+you've used: the session and weekly limit meters, and how many requests each
+model made in each window. The numbers come straight from your ollama.com
+account, so they include usage from every machine and tool, not just this one.
+
+![Panel](docs/panel.png)
+
+## What you get
+
+- **Bar icon** (󱚤 by default). It turns the alert color when any window
+  passes 90%. Hover for a one-line summary.
+- **Panel** (click the icon):
+  - **Limits:** session and weekly usage, as a percentage and a meter.
+  - **Session · requests** and **Weekly · requests:** each model with its
+    request count, bars scaled to the busiest model. Tools such as web search
+    are listed after the models and marked "(tool)".
+  - A header showing when the numbers were last updated, and a red card if
+    something is wrong (missing or rejected key, ollama.com unreachable).
+
+**Not shown:** reset times. ollama.com's usage API doesn't provide them.
+
+## Setup
+
+1. Create an API key at <https://ollama.com/settings/keys>.
+2. Save it:
+   ```bash
+   install -d -m 700 ~/.config/omarchy/ollama-usage
+   echo 'YOUR_KEY' > ~/.config/omarchy/ollama-usage/api.key
+   chmod 600 ~/.config/omarchy/ollama-usage/api.key
+   ```
+   (Or set `OLLAMA_API_KEY` in the environment the shell runs in.)
+3. Install the plugin. It must be a real folder under
+   `~/.config/omarchy/plugins/`; see [DETAILS.md](DETAILS.md) for why.
+   ```bash
+   git clone <this repo> ~/.config/omarchy/plugins/ariel.ollama-usage
+   omarchy-shell shell rescanPlugins
+   omarchy plugin enable ariel.ollama-usage --after omarchy.agents
+   ```
+
+## Using it
+
+| Action | What it does |
+|---|---|
+| Left click | Open / close the panel |
+| Middle click | Refresh now |
+| Right click | Open ollama.com/settings in the browser |
+| `r` or Enter (panel open) | Refresh now |
+| `j` / `k` | Scroll |
+| Tab | Move to the neighboring bar panel |
+| Esc | Close |
+
+From a terminal: `omarchy-shell ariel.ollama-usage refresh|open|close|toggle`.
+
+The widget refreshes every 15 minutes, and when you open the panel (at most
+once a minute).
+
+## Settings
+
+Set with `omarchy bar set ariel.ollama-usage <key> <value>`:
+
+| Key | Default | Meaning |
+|---|---|---|
+| `refreshIntervalSec` | `900` | Seconds between checks (minimum 60). Use `--json` so it's stored as a number. |
+| `icon` | `󱚤` | Any Nerd Font glyph for the bar. |
+| `showPercent` | `"Off"` | `"On"` shows the fullest window's % next to the icon. |
+
+## Files
+
+- Key: `~/.config/omarchy/ollama-usage/api.key`
+- Latest data: `~/.local/state/omarchy/ollama-usage/usage.json`
+- Run the data fetch by hand: `python3 collect.py --force`
+
+## Remove
+
+```bash
+omarchy plugin remove ariel.ollama-usage
+```
+
+## Credits
+
+The Ollama mark in `assets/` comes from
+[GePi0/omarchy-ai-usage](https://github.com/GePi0/omarchy-ai-usage) (MIT). The
+Ollama logo is Ollama's trademark. The panel layout follows Omarchy's built-in
+Agents widget.
