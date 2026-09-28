@@ -31,13 +31,13 @@ account, so they include usage from every machine and tool, not just this one.
    chmod 600 ~/.config/omarchy/ollama-usage/api.key
    ```
    (Or set `OLLAMA_API_KEY` in the environment the shell runs in.)
-3. Install the plugin. It must be a real folder under
-   `~/.config/omarchy/plugins/`; see [DETAILS.md](DETAILS.md) for why.
+3. Install and enable the plugin:
    ```bash
-   git clone <this repo> ~/.config/omarchy/plugins/ariel.ollama-usage
-   omarchy-shell shell rescanPlugins
-   omarchy plugin enable ariel.ollama-usage --after omarchy.agents
+   omarchy plugin add <this repo's git URL> --enable
+   omarchy bar move ariel.ollama-usage --section right   # if it didn't land where you want
    ```
+   The plugin must be a real folder under `~/.config/omarchy/plugins/`, not a
+   symlink, or edits won't hot-reload. See [DETAILS.md](DETAILS.md).
 
 ## Using it
 

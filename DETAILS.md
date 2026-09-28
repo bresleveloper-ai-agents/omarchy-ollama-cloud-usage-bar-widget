@@ -4,6 +4,32 @@ Everything non-obvious about this plugin: why it's shaped this way, what was
 verified, what was tried and rejected, and the traps. Read this before
 changing anything.
 
+## 0. Handoff / current status (2026-09-28)
+
+- **State:** v1.0.0 works and is in daily use. It's enabled in the bar right
+  after `omarchy.agents` and shows the outline-robot glyph 󱚤, which the user
+  approved. The UI was verified with screenshots (`docs/panel.png`).
+- **Not published yet.** No git remote. The user wants to share it
+  eventually. Before publishing:
+  1. Add a remote and push.
+  2. Replace `<this repo>` in README with the URL.
+  3. Consider submitting to the Omarchy plugin marketplace
+     (github.com/omacom/omarchy-plugin-marketplace). GePi0's submission,
+     issue #7629, is a template.
+- **Secrets:** the API key lives **outside** the repo at
+  `~/.config/omarchy/ollama-usage/api.key`. `.gitignore` also blocks `*.key`,
+  `.env*` and state files. Before any push, re-check with
+  `git log -p | grep -F "<key fragment>"`. It was verified clean at the first
+  commit. The key was once pasted into a chat session, so rotating it at
+  ollama.com/settings/keys is advisable.
+- **Where things are:**
+  - The repo is the real plugin folder, `~/.config/omarchy/plugins/ariel.ollama-usage/`.
+  - `~/Projects/omarchy-ollama-usage` is a symlink to it (see §2 for why).
+  - State lives in `~/.local/state/omarchy/ollama-usage/usage.json`.
+- **Nothing else on the system depends on this.** The earlier systemd timer
+  approach was fully removed (§6).
+- **Next ideas:** see §9.
+
 ## 1. What this is
 
 `ariel.ollama-usage` is a third-party Omarchy shell (Quickshell/QML) bar

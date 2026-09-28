@@ -1,4 +1,10 @@
 __pycache__/
 *.pyc
-*.key
 *.tmp
+
+# Secrets and runtime state never belong in the repo
+*.key
+.env
+.env.*
+usage.json
+.lock
