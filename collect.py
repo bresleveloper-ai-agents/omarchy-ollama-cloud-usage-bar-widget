@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch Ollama Cloud usage and write it where the ariel.ollama-usage widget reads it.
+"""Fetch Ollama Cloud usage and write it where the Ollama Cloud usage bar widget reads it.
 
 Source: GET https://ollama.com/api/usage with a Bearer API key. The endpoint
 is undocumented; it reports each limit window (session, weekly, sometimes
@@ -77,7 +77,7 @@ def api_key() -> str:
 def fetch(key: str) -> dict:
   request = urllib.request.Request(
     ENDPOINT,
-    headers={"Authorization": f"Bearer {key}", "Accept": "application/json", "User-Agent": "ariel.ollama-usage"},
+    headers={"Authorization": f"Bearer {key}", "Accept": "application/json", "User-Agent": "omarchy-ollama-cloud-usage-bar-widget"},
   )
   with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SEC) as response:
     body = response.read(MAX_RESPONSE_BYTES + 1)

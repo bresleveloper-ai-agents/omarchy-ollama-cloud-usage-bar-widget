@@ -8,7 +8,7 @@ changing anything.
 
 - **State:** v1.0.0 works and is in daily use. It's enabled in the bar right
   after `omarchy.agents` and shows the outline-robot glyph 󱚤, which the user
-  approved. The UI was verified with screenshots (`docs/panel.png`).
+  approved. The UI was verified with screenshots (`preview.png`).
 - **Published (public since 2026-09-28)** at https://github.com/bresleveloper-ai-agents/omarchy-ollama-cloud-usage-bar-widget, under the
   agents' GitHub account (not the user's personal one). The repo name follows
   the user's hard rule: Omarchy repos start with `omarchy-`, and long,
@@ -34,16 +34,30 @@ changing anything.
   commit. The key was once pasted into a chat session, so rotating it at
   ollama.com/settings/keys is advisable.
 - **Where things are:**
-  - The repo is the real plugin folder, `~/.config/omarchy/plugins/ariel.ollama-usage/`.
+  - The repo is the real plugin folder, `~/.config/omarchy/plugins/io.github.bresleveloper.ollama-cloud-usage-bar-widget/`.
   - `~/Projects/omarchy-ollama-cloud-usage-bar-widget` is a symlink to it (see §2 for why).
   - State lives in `~/.local/state/omarchy/ollama-usage/usage.json`.
 - **Nothing else on the system depends on this.** The earlier systemd timer
   approach was fully removed (§6).
 - **Next ideas:** see §9.
 
+## 0.1 Plugin ID rename (2026-09-28)
+
+The ID changed from `ariel.ollama-usage` to
+`io.github.bresleveloper.ollama-cloud-usage-bar-widget` before the marketplace
+submission.
+- **Why:** marketplace IDs are permanent, and the `ariel.*` prefix was
+  already used by an unrelated author (gustavohariel's `ariel.singbox`,
+  `ariel.hubstaff`). The marketplace guide recommends `io.github.<name>.<plugin>`.
+- **Who "bresleveloper" is:** the user's own GitHub name. The repo itself
+  lives under the agents' account `bresleveloper-ai-agents`.
+- **What changed:** the folder name, `manifest.id`, `moduleName` /
+  `ipcTarget` in Panel.qml, and the README commands. The key path and state
+  path (`.../ollama-usage/`) did **not** change; they are independent of the ID.
+
 ## 1. What this is
 
-`ariel.ollama-usage` is a third-party Omarchy shell (Quickshell/QML) bar
+`io.github.bresleveloper.ollama-cloud-usage-bar-widget` is a third-party Omarchy shell (Quickshell/QML) bar
 widget. It shows Ollama Cloud plan usage: limit windows (session, weekly, and
 monthly if the API ever returns it) and per-model request counts per window.
 Built 2026-09-28 on Omarchy 4.0.3, Ollama CLI 0.33.3, Arch Linux.
@@ -57,7 +71,7 @@ Two files do the work:
 
 ## 2. Location and install layout (important)
 
-- **The real folder is `~/.config/omarchy/plugins/ariel.ollama-usage/`, which
+- **The real folder is `~/.config/omarchy/plugins/io.github.bresleveloper.ollama-cloud-usage-bar-widget/`, which
   holds the git repo.**
 - `~/Projects/omarchy-ollama-cloud-usage-bar-widget` is a **symlink to it**. It is not the
   other way round.
@@ -73,7 +87,7 @@ Two files do the work:
   up. When a change doesn't show, restart the shell before debugging.
 - `omarchy plugin validate` rejects symlinks inside a plugin folder
   (`find ... -type l`), so every asset must be a real file. Validate the
-  real path: `omarchy plugin validate ~/.config/omarchy/plugins/ariel.ollama-usage`.
+  real path: `omarchy plugin validate ~/.config/omarchy/plugins/io.github.bresleveloper.ollama-cloud-usage-bar-widget`.
 - Never edit `/usr/share/omarchy/` (it belongs to the omarchy package). Read
   it freely.
 
@@ -107,7 +121,7 @@ Two files do the work:
   reports mention `monthly`. Both are handled: any window the API omits is
   simply skipped.
 - A bad key returns HTTP 401. Python's default urllib user agent is accepted.
-  We send `User-Agent: ariel.ollama-usage` anyway.
+  We send `User-Agent: io.github.bresleveloper.ollama-cloud-usage-bar-widget` anyway.
 - "web search" (and presumably "web fetch") appear as entries in the model
   lists. `collect.py` marks them `"tool": true`. The panel lists them after
   the models, dims them, and leaves them out of the bar scaling.
@@ -154,7 +168,7 @@ Behavior:
 Test recipe (all verified on 2026-09-28):
 
 ```bash
-cd ~/.config/omarchy/plugins/ariel.ollama-usage
+cd ~/.config/omarchy/plugins/io.github.bresleveloper.ollama-cloud-usage-bar-widget
 S=/tmp/ou-test.json
 OLLAMA_USAGE_STATE=$S ./collect.py --force && jq . $S                        # happy path
 OLLAMA_API_KEY=bad OLLAMA_USAGE_STATE=$S ./collect.py --force; jq '{ok,error}' $S   # 401 path
@@ -282,5 +296,5 @@ implementation. Every blocker and should-fix it raised was applied:
   real "requests by day" chart.
 - If ollama.com adds reset timestamps to `/api/usage`, add a "Resets in …"
   line under each meter (see stock `LimitRow` in the agents panel).
-- A screenshot for the README lives in `docs/panel.png`; update it when the UI
+- A screenshot for the README lives in `preview.png`; update it when the UI
   changes.

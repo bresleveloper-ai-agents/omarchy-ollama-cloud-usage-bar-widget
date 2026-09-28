@@ -11,8 +11,8 @@ import qs.Ui
 // stock omarchy.agents panel so the two read as siblings.
 Panel {
   id: root
-  moduleName: "ariel.ollama-usage"
-  ipcTarget: "ariel.ollama-usage"
+  moduleName: "io.github.bresleveloper.ollama-cloud-usage-bar-widget"
+  ipcTarget: "io.github.bresleveloper.ollama-cloud-usage-bar-widget"
   // Our IpcHandler below adds `refresh`; the base one would share the target.
   manageIpc: false
 

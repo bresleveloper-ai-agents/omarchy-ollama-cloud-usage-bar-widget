@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "ariel.ollama-usage",
+  "id": "io.github.bresleveloper.ollama-cloud-usage-bar-widget",
   "name": "Ollama Cloud Usage",
   "version": "1.0.0",
-  "author": "ariel",
+  "author": "bresleveloper",
   "license": "MIT",
   "description": "Ollama Cloud session and weekly limits with per-model request counts, from ollama.com's usage API.",
   "kinds": ["bar-widget"],
