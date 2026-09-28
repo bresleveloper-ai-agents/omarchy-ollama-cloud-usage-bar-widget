@@ -80,7 +80,7 @@ omarchy plugin remove ariel.ollama-usage
 
 ## Author
 
-ariel: ariel.rubi@gmail.com
+ariel (ariel.rubi@gmail.com), with Claude Opus 5.5
 
 ## Credits
 
