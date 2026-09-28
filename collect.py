@@ -30,6 +30,7 @@ import datetime as dt
 import fcntl
 import json
 import os
+import stat
 import sys
 import tempfile
 import urllib.error
@@ -62,6 +63,28 @@ def now_iso() -> str:
   return dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
 
 
+def open_regular(path: Path, flags: int, follow: bool = False) -> int:
+  """Open path without truncating it, refusing FIFOs, devices and (unless
+  follow) symlinks, so a planted file can't block or redirect the collector."""
+  flags |= os.O_NONBLOCK | os.O_CLOEXEC
+  if not follow:
+    flags |= os.O_NOFOLLOW
+  fd = os.open(path, flags, 0o600)
+  try:
+    if not stat.S_ISREG(os.fstat(fd).st_mode):
+      raise OSError(f"{path} is not a regular file")
+    os.set_blocking(fd, True)
+    return fd
+  except BaseException:
+    os.close(fd)
+    raise
+
+
+def read_regular(path: Path, follow: bool = False, limit: int = 1 << 20) -> str:
+  with os.fdopen(open_regular(path, os.O_RDONLY, follow), "rb") as handle:
+    return handle.read(limit).decode("utf-8")
+
+
 def api_key() -> str:
   key = os.environ.get("OLLAMA_API_KEY", "").strip()
   if key:
@@ -69,8 +92,8 @@ def api_key() -> str:
   try:
     if KEY_FILE.stat().st_mode & 0o077:
       print(f"ollama-usage: warning: {KEY_FILE} is readable by other users; chmod 600 it", file=sys.stderr)
-    return KEY_FILE.read_text().strip()
-  except OSError:
+    return read_regular(KEY_FILE, follow=True).strip()
+  except (OSError, UnicodeDecodeError):
     return ""
 
 
@@ -138,7 +161,7 @@ def windows_from(payload: dict) -> list[dict]:
 
 def previous_record() -> dict:
   try:
-    record = json.loads(STATE_FILE.read_text())
+    record = json.loads(read_regular(STATE_FILE))
     return record if isinstance(record, dict) else {}
   except (OSError, ValueError):
     return {}
@@ -206,7 +229,13 @@ def main() -> int:
   args = parser.parse_args()
 
   STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-  with open(STATE_FILE.parent / ".lock", "w") as lock:
+  lock_path = STATE_FILE.parent / ".lock"
+  try:
+    lock_fd = open_regular(lock_path, os.O_RDWR | os.O_CREAT)
+  except OSError as error:
+    print(f"ollama-usage: refusing lock file {lock_path}: {error}", file=sys.stderr)
+    return 1
+  with os.fdopen(lock_fd, "r+b") as lock:
     fcntl.flock(lock, fcntl.LOCK_EX)
     previous = previous_record()
     if not args.force and recently_checked(previous):

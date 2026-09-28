@@ -182,6 +182,14 @@ Behavior:
 - **Concurrency:** one bar widget instance runs per monitor, each with its own
   timers. Runs are serialized with `fcntl.flock` on `<state dir>/.lock`, and a
   run is skipped if `checkedAt` is under 60 s old, unless `--force` is given.
+- **Safe file opens** (marketplace review of #9116, HANCORE-linux): the lock
+  is opened with `os.open(O_RDWR|O_CREAT|O_NOFOLLOW|O_NONBLOCK)`, never
+  `open(..., "w")`, and must be a regular file (`fstat`/`S_ISREG`) before
+  `flock`. A symlinked `.lock` can't truncate its target, and a FIFO can't hang
+  the widget; either one makes the run exit 1 with a message. `usage.json` is
+  read the same way (no symlinks, regular files only). The key file may be a
+  symlink but must resolve to a regular file. All of this is in
+  `open_regular()`/`read_regular()` in `collect.py`.
 - **Test overrides:** `OLLAMA_USAGE_STATE` changes the output file.
   `OLLAMA_USAGE_ENDPOINT` is honored **only** with `OLLAMA_USAGE_TEST=1`, so a
   stray inherited variable can't send the Bearer key to another host.
