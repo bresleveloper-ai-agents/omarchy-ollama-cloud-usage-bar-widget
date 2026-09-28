@@ -9,7 +9,7 @@ changing anything.
 - **State:** v1.0.0 works and is in daily use. It's enabled in the bar right
   after `omarchy.agents` and shows the outline-robot glyph 󱚤, which the user
   approved. The UI was verified with screenshots (`docs/panel.png`).
-- **Published (private)** at https://github.com/bresleveloper-ai-agents/omarchy-ollama-cloud-usage-bar-widget, under the
+- **Published (public since 2026-09-28)** at https://github.com/bresleveloper-ai-agents/omarchy-ollama-cloud-usage-bar-widget, under the
   agents' GitHub account (not the user's personal one). The repo name follows
   the user's hard rule: Omarchy repos start with `omarchy-`, and long,
   descriptive names are preferred. Pushes use the token in
@@ -18,8 +18,8 @@ changing anything.
   ```bash
   git -c credential.helper= -c 'credential.helper=!f(){ echo username=x-access-token; echo "password=$(cat ~/Projects/agents-data/github-token)"; }; f' push
   ```
-  Before making it public: rotate the Ollama key if not done yet, and decide
-  whether commits should keep the author email `ariel.rubi@gmail.com`.
+  Before it went public, all history was scanned for the Ollama key, the
+  GitHub token and generic secret patterns: nothing was found.
   Marketplace submission: github.com/omacom/omarchy-plugin-marketplace
   (GePi0's issue #7629 is a template).
 - **Identities:** commits are made as `ariel <arielbattlenet@gmail.com>`,
