@@ -9,16 +9,19 @@ changing anything.
 - **State:** v1.0.0 works and is in daily use. It's enabled in the bar right
   after `omarchy.agents` and shows the outline-robot glyph 󱚤, which the user
   approved. The UI was verified with screenshots (`docs/panel.png`).
-- **Not published yet.** No git remote. The user wants to share it
-  eventually. Before publishing:
-  1. Add a remote and push. Agents publish with the **agents' GitHub
-     account bresleveloper-ai-agents**, not the user's personal GitHub; see
-     `~/Projects/agents-data/README.md`. Confirm with the user which account
-     and whether public or private before pushing.
-  2. Replace `<this repo>` in README with the URL.
-  3. Consider submitting to the Omarchy plugin marketplace
-     (github.com/omacom/omarchy-plugin-marketplace). GePi0's submission,
-     issue #7629, is a template.
+- **Published (private)** at https://github.com/bresleveloper-ai-agents/omarchy-ollama-cloud-usage-bar-widget, under the
+  agents' GitHub account (not the user's personal one). The repo name follows
+  the user's hard rule: Omarchy repos start with `omarchy-`, and long,
+  descriptive names are preferred. Pushes use the token in
+  `~/Projects/agents-data/github-token` through a one-off credential helper,
+  so no token is stored in `.git/config`:
+  ```bash
+  git -c credential.helper= -c 'credential.helper=!f(){ echo username=x-access-token; echo "password=$(cat ~/Projects/agents-data/github-token)"; }; f' push
+  ```
+  Before making it public: rotate the Ollama key if not done yet, and decide
+  whether commits should keep the author email `ariel.rubi@gmail.com`.
+  Marketplace submission: github.com/omacom/omarchy-plugin-marketplace
+  (GePi0's issue #7629 is a template).
 - **Secrets:** the API key lives **outside** the repo at
   `~/.config/omarchy/ollama-usage/api.key`. `.gitignore` also blocks `*.key`,
   `.env*` and state files. Before any push, re-check with
@@ -27,7 +30,7 @@ changing anything.
   ollama.com/settings/keys is advisable.
 - **Where things are:**
   - The repo is the real plugin folder, `~/.config/omarchy/plugins/ariel.ollama-usage/`.
-  - `~/Projects/omarchy-ollama-usage` is a symlink to it (see §2 for why).
+  - `~/Projects/omarchy-ollama-cloud-usage-bar-widget` is a symlink to it (see §2 for why).
   - State lives in `~/.local/state/omarchy/ollama-usage/usage.json`.
 - **Nothing else on the system depends on this.** The earlier systemd timer
   approach was fully removed (§6).
@@ -51,7 +54,7 @@ Two files do the work:
 
 - **The real folder is `~/.config/omarchy/plugins/ariel.ollama-usage/`, which
   holds the git repo.**
-- `~/Projects/omarchy-ollama-usage` is a **symlink to it**. It is not the
+- `~/Projects/omarchy-ollama-cloud-usage-bar-widget` is a **symlink to it**. It is not the
   other way round.
 - Why: the shell hot-reloads plugins with `inotifywait -m -r` on
   `~/.config/omarchy/plugins` (`/usr/share/omarchy/shell/services/PluginRegistry.qml` ~663-679).

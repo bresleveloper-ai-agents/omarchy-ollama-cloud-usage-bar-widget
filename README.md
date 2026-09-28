@@ -33,7 +33,7 @@ account, so they include usage from every machine and tool, not just this one.
    (Or set `OLLAMA_API_KEY` in the environment the shell runs in.)
 3. Install and enable the plugin:
    ```bash
-   omarchy plugin add <this repo's git URL> --enable
+   omarchy plugin add https://github.com/bresleveloper-ai-agents/omarchy-ollama-cloud-usage-bar-widget.git --enable
    omarchy bar move ariel.ollama-usage --section right   # if it didn't land where you want
    ```
    The plugin must be a real folder under `~/.config/omarchy/plugins/`, not a
