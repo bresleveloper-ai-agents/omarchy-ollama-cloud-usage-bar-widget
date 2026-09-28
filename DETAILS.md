@@ -11,7 +11,10 @@ changing anything.
   approved. The UI was verified with screenshots (`docs/panel.png`).
 - **Not published yet.** No git remote. The user wants to share it
   eventually. Before publishing:
-  1. Add a remote and push.
+  1. Add a remote and push. Agents publish with the **agents' GitHub
+     account JarvisDeLaAri**, not the user's personal GitHub; see
+     `~/Projects/agents-data/README.md`. Confirm with the user which account
+     and whether public or private before pushing.
   2. Replace `<this repo>` in README with the URL.
   3. Consider submitting to the Omarchy plugin marketplace
      (github.com/omacom/omarchy-plugin-marketplace). GePi0's submission,
