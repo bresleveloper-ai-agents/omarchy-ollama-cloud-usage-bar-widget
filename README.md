@@ -1,4 +1,4 @@
-# Ollama Cloud Usage for the Omarchy bar
+# Ollama Cloud Usage Bar Widget for Omarchy
 
 A small Omarchy bar widget that shows how much of your **Ollama Cloud** plan
 you've used: the session and weekly limit meters, and how many requests each

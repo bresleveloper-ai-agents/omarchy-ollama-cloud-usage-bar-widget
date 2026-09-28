@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "id": "io.github.bresleveloper.ollama-cloud-usage-bar-widget",
-  "name": "Ollama Cloud Usage",
+  "name": "Ollama Cloud Usage Bar Widget",
   "version": "1.0.0",
   "author": "bresleveloper",
   "license": "MIT",
@@ -12,7 +12,7 @@
     "barWidget": "Panel.qml"
   },
   "barWidget": {
-    "displayName": "Ollama Cloud Usage",
+    "displayName": "Ollama Cloud Usage Bar Widget",
     "description": "Session and weekly limit meters plus requests by model for each window.",
     "category": "AI",
     "aliases": ["ollama", "ollama-usage"],
