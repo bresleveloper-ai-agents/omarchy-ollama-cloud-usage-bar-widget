@@ -28,6 +28,7 @@ Panel {
   readonly property int refreshIntervalSec: Math.max(60, Number(setting("refreshIntervalSec", 900)) || 900)
   readonly property string barIcon: String(setting("icon", "󱚤")) || "󱚤"
   readonly property bool showPercent: String(setting("showPercent", "Off")).toLowerCase() === "on"
+  readonly property bool resetTimes: String(setting("resetTimes", "On")).toLowerCase() !== "off"
 
   readonly property string home: Quickshell.env("HOME")
   readonly property string stateFile: (Quickshell.env("XDG_STATE_HOME") || home + "/.local/state") + "/omarchy/ollama-usage/usage.json"
@@ -49,6 +50,17 @@ Panel {
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)) }
   function alpha(c, a) { return Qt.rgba(c.r, c.g, c.b, a) }
   function percentText(w) { return w ? Math.round(Number(w.percent || 0) * 100) + "%" : "—" }
+
+  function resetText(w) {
+    var ms = new Date(String(w && w.resetsAt || "")).getTime() - root.nowMs
+    if (!root.resetTimes || !isFinite(ms) || ms <= 0) return ""
+    var minutes = Math.floor(ms / 60000)
+    var hours = Math.floor(minutes / 60)
+    var days = Math.floor(hours / 24)
+    if (days > 0) return "Resets in " + days + "d " + (hours % 24) + "h"
+    if (hours > 0) return "Resets in " + hours + "h " + (minutes % 60) + "m"
+    return "Resets in " + Math.max(1, minutes) + "m"
+  }
 
   function ageText(iso) {
     var ms = new Date(String(iso || "")).getTime()
@@ -72,7 +84,10 @@ Panel {
   function barTooltip() {
     if (windows.length === 0) return "Ollama Cloud" + (hasProblem ? " · needs attention" : "")
     var parts = []
-    for (var i = 0; i < windows.length; i++) parts.push(windows[i].title + " " + percentText(windows[i]))
+    for (var i = 0; i < windows.length; i++) {
+      var reset = resetText(windows[i]).replace("Resets in ", "")
+      parts.push(windows[i].title + " " + percentText(windows[i]) + (reset !== "" ? " (resets " + reset + ")" : ""))
+    }
     var age = record ? ageText(record.updatedAt) : ""
     return "Ollama Cloud · " + parts.join(" · ") + (age !== "" ? " · " + age : "")
   }
@@ -113,9 +128,11 @@ Panel {
 
   function refresh(force) {
     if (collectProcess.running) return
-    collectProcess.command = force
-      ? ["timeout", "-k", "5", "30", "python3", root.collector, "--force"]
-      : ["timeout", "-k", "5", "30", "python3", root.collector]
+    // 60s covers the API call plus a reset-time scrape (capped at 25s).
+    var command = ["timeout", "-k", "5", "60", "python3", root.collector]
+    if (force) command.push("--force")
+    if (!root.resetTimes) command.push("--no-resets")
+    collectProcess.command = command
     collectProcess.running = true
   }
 
@@ -502,6 +519,16 @@ Panel {
       width: parent.width
       value: limitRow.window ? Number(limitRow.window.percent || 0) : -1
       alarming: limitRow.alarming
+    }
+
+    Text {
+      textFormat: Text.PlainText
+      width: parent.width
+      visible: text !== ""
+      text: root.resetText(limitRow.window)
+      color: root.dim
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
     }
   }
 

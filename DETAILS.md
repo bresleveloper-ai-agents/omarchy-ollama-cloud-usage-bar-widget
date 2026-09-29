@@ -139,7 +139,7 @@ Two files do the work:
 - `usage` is a **0–1 fraction**. `collect.py` also accepts percent-scaled
   values (> 1.5 is divided by 100) in case the API changes.
 - **No reset timestamps.** `activity.period` is a reporting period, not a
-  reset time.
+  reset time. Reset times come from ollama.com/settings instead (§3b).
 - Plans created after 2026-08-31 reportedly have no `session` window. Some
   reports mention `monthly`. Both are handled: any window the API omits is
   simply skipped.
@@ -272,6 +272,38 @@ OLLAMA_USAGE_ENDPOINT=https://nonexistent.invalid OLLAMA_USAGE_STATE=$S ./collec
   counts every model in `~/.claude/projects`. Not fixable without cloning
   that collector.
 
+## 3b. Reset times: `resets.py` (added 2026-09-29)
+
+- Source: ollama.com/settings, rendered with headless Chromium from a temp
+  profile. The profile holds only the ollama.com cookie rows plus Local
+  State's `os_crypt`, because Chrome decrypts cookies with the keyring. The
+  code is adapted from GePi0's collector. It took about 1 s here with Chrome
+  Default.
+- **The page has exact times.** Each usage block ends with
+  `<div class="... local-time" data-time="2026-09-29T15:00:00Z">Resets in 2 hours.</div>`.
+  GePi0 parses only the coarse text; we read `data-time` and fall back to
+  the text. Observed: session resets fall on the hour (15:00Z), weekly on
+  Monday 00:00Z.
+- Trap: each heading also appears in the bar's `aria-label="Session usage 13% used"`,
+  so a section runs until the next *different* heading.
+- Scheduling (`resets_due` in collect.py). The user asked for this not to
+  be a bottleneck or an annoyance:
+  - It runs only after usage.json is written, under its own non-blocking
+    lock, and the whole step is wrapped in `except Exception`.
+  - It refreshes every 2 h. It can run sooner, at most every 10 min, when
+    a cached reset has passed (the window rolled over, and knowing this
+    reset says nothing about the next one), or when a window shown on the
+    page with no reset now has usage > 0 (a new session started).
+  - After a failure it waits 30 min.
+  - A reset that has passed is dropped from the panel right away, not
+    shown as "now".
+- Time caps: 25 s for all render attempts; the panel's `timeout` was raised
+  from 30 s to 60 s. SIGTERM becomes `sys.exit`, so `kill_group` still reaps
+  Chrome's process group. Tested with a fake hanging browser: no orphans.
+- `sys.dont_write_bytecode` is set before `import resets`, because a
+  `__pycache__` write in the plugin folder triggers a hot-reload.
+- Setting `resetTimes` Off passes `--no-resets`.
+
 ## 7. Alternatives evaluated
 
 - **Feeding request counts into the Agents widget's token fields.** Rejected:
@@ -289,9 +321,8 @@ OLLAMA_USAGE_ENDPOINT=https://nonexistent.invalid OLLAMA_USAGE_STATE=$S ./collec
   - It's fragile to page markup changes and runs a browser in the background.
   - Ideas borrowed: the cold-start delay, keeping the last good data on
     failure, the Ollama mark asset.
-  - Not borrowed: scraping.
-  - If reset countdowns become a must-have, its `collect.py`
-    (`parse_resets_at`, `filter_cookie_db`) is the reference.
+  - Not borrowed at first: scraping. Later borrowed, only for reset times
+    (§3b).
 - **Estimating resets from observed usage drops.** Rejected: it would be
   wrong after idle periods, and a guessed countdown looks authoritative.
 
@@ -325,7 +356,7 @@ implementation. Every blocker and should-fix it raised was applied:
 - Show `activity.cost` if it ever becomes non-zero (pay-as-you-go).
 - A history file (append the weekly model counts each run) could later give a
   real "requests by day" chart.
-- If ollama.com adds reset timestamps to `/api/usage`, add a "Resets in …"
-  line under each meter (see stock `LimitRow` in the agents panel).
+- If ollama.com adds reset timestamps to `/api/usage`, use them and drop the
+  scrape (§3b).
 - A screenshot for the README lives in `preview.png`; update it when the UI
   changes.

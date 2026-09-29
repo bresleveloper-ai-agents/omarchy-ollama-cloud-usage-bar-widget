@@ -8,3 +8,5 @@ __pycache__/
 .env.*
 usage.json
 .lock
+resets.json
+.resets.lock

@@ -12,14 +12,22 @@ account, so they include usage from every machine and tool, not just this one.
 - **Bar icon** (󱚤 by default). It turns the alert color when any window
   passes 90%. Hover for a one-line summary.
 - **Panel** (click the icon):
-  - **Limits:** session and weekly usage, as a percentage and a meter.
+  - **Limits:** session and weekly usage, as a percentage and a meter, with
+    "Resets in …" under each (see below).
   - **Session · requests** and **Weekly · requests:** each model with its
     request count, bars scaled to the busiest model. Tools such as web search
     are listed after the models and marked "(tool)".
   - A header showing when the numbers were last updated, and a red card if
     something is wrong (missing or rejected key, ollama.com unreachable).
 
-**Not shown:** reset times. ollama.com's usage API doesn't provide them.
+**Reset times** are optional and best-effort. The usage API doesn't provide
+them, so about every 2 hours the widget renders ollama.com/settings in
+headless Chromium (Chrome, Chromium or Brave) and reads them off the page.
+It uses a temporary copy of only your browser's ollama.com cookies. It
+checks sooner only when a known reset has passed or a window is in use with
+no reset time known. On failure (no browser, signed out, page changed) it
+logs a line, waits 30 minutes, and leaves the usage numbers alone. Turn it
+off with `resetTimes Off`.
 
 ## Requirements
 
@@ -31,7 +39,8 @@ account, so they include usage from every machine and tool, not just this one.
 - `timeout` from coreutils, and `xdg-open` for the right-click shortcut.
   Both ship with Omarchy.
 
-The plugin needs no browser, cookies or root access, and it doesn't change
+Usage itself needs no browser, cookies or root access. Only the optional
+reset times do (see above). The plugin doesn't change
 any Omarchy configuration beyond the bar entry that `omarchy plugin` manages.
 
 ## Setup
@@ -78,12 +87,13 @@ Set with `omarchy bar set io.github.bresleveloper.ollama-cloud-usage-bar-widget 
 | `refreshIntervalSec` | `900` | Seconds between checks (minimum 60). Use `--json` so it's stored as a number. |
 | `icon` | `󱚤` | Any Nerd Font glyph for the bar. |
 | `showPercent` | `"Off"` | `"On"` shows the fullest window's % next to the icon. |
+| `resetTimes` | `"On"` | `"Off"` stops reading reset times from ollama.com/settings (no headless browser). |
 
 ## Files
 
 - Key: `~/.config/omarchy/ollama-usage/api.key`
-- Latest data: `~/.local/state/omarchy/ollama-usage/usage.json`
-- Run the data fetch by hand: `python3 collect.py --force`
+- Latest data: `~/.local/state/omarchy/ollama-usage/usage.json` (reset times cached in `resets.json`)
+- Run the data fetch by hand: `python3 collect.py --force`; add `--resets-now` to re-read reset times immediately
 
 ## Remove
 
@@ -104,7 +114,8 @@ bresleveloper (ariel.rubi@gmail.com), with Claude Opus 5.5
 
 ## Credits
 
-The Ollama mark in `assets/` comes from
+The Ollama mark in `assets/`, and the headless-browser and cookie-filtering
+approach in `resets.py`, come from
 [GePi0/omarchy-ai-usage](https://github.com/GePi0/omarchy-ai-usage) (MIT). The
 Ollama logo is Ollama's trademark. The panel layout follows Omarchy's built-in
 Agents widget.
