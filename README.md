@@ -1,8 +1,9 @@
 # Ollama Cloud Usage Bar Widget for Omarchy
 
 A small Omarchy bar widget that shows how much of your **Ollama Cloud** plan
-you've used: the session and weekly limit meters, and how many requests each
-model made in each window. The numbers come straight from your ollama.com
+you've used: the monthly included-credits meter (or, on legacy plans, the
+session and weekly limit meters), and how many requests each model made. The
+numbers come straight from your ollama.com
 account, so they include usage from every machine and tool, not just this one.
 
 ![Panel](preview.png)
@@ -12,16 +13,20 @@ account, so they include usage from every machine and tool, not just this one.
 - **Bar icon** (󱚤 by default). It turns the alert color when any window
   passes 90%. Hover for a one-line summary.
 - **Panel** (click the icon):
-  - **Limits:** session and weekly usage, as a percentage and a meter, with
-    "Resets in …" under each (see below).
-  - **Session · requests** and **Weekly · requests:** each model with its
-    request count, bars scaled to the busiest model. Tools such as web search
-    are listed after the models and marked "(tool)".
+  - **Limits:** on current plans, the monthly included credits as a
+    percentage and a meter, with dollars used of the allowance, any purchased
+    credits left, and when the billing period resets. On legacy plans, session
+    and weekly usage, with "Resets in …" under each (see below).
+  - **This period · requests** (legacy: **Session · requests** and
+    **Weekly · requests**): each model with its request count, bars scaled to
+    the busiest model. Tools such as web search are listed after the models
+    and marked "(tool)".
   - A header showing when the numbers were last updated, and a red card if
     something is wrong (missing or rejected key, ollama.com unreachable).
 
-**Reset times** are optional and best-effort. The usage API doesn't provide
-them, so about every 2 hours the widget renders ollama.com/settings in
+**Reset times** on current plans come with the balance from ollama.com's
+API, so nothing extra runs. On legacy plans they are optional and
+best-effort: the usage API doesn't provide them, so about every 2 hours the widget renders ollama.com/settings in
 headless Chromium (Chrome, Chromium or Brave) and reads them off the page.
 It uses a temporary copy of only your browser's ollama.com cookies. It
 checks sooner only when a known reset has passed or a window is in use with
@@ -34,13 +39,14 @@ off with `resetTimes Off`.
 - Omarchy with the Quickshell-based `omarchy-shell` bar (tested on Omarchy 4.0.3).
 - An Ollama Cloud account and an API key from <https://ollama.com/settings/keys>.
 - `python3` on `PATH`, standard library only; no pip packages.
-- Network access to `https://ollama.com`. The widget calls one endpoint,
-  `GET /api/usage`, with your key as a Bearer token.
+- Network access to `https://ollama.com`. The widget calls `GET /api/balance`
+  and `GET /api/usage` (legacy plans: `GET /api/usage` alone), with your key
+  as a Bearer token.
 - `timeout` from coreutils, and `xdg-open` for the right-click shortcut.
   Both ship with Omarchy.
 
 Usage itself needs no browser, cookies or root access. Only the optional
-reset times do (see above). The plugin doesn't change
+legacy-plan reset times do (see above). The plugin doesn't change
 any Omarchy configuration beyond the bar entry that `omarchy plugin` manages.
 
 ## Setup

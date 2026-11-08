@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """Fetch Ollama Cloud usage and write it where the Ollama Cloud usage bar widget reads it.
 
-Source: GET https://ollama.com/api/usage with a Bearer API key. The endpoint
-is undocumented; it reports each limit window (session, weekly, sometimes
-monthly) as a 0-1 `usage` fraction plus per-model request counts. It carries
-no reset timestamps.
+Source (undocumented endpoints, Bearer API key):
+  - Current plans: GET /api/balance gives the monthly included credits
+    (allowance, balance left, billing period, so the reset time too) and any
+    purchased credits; GET /api/usage?range=30d&group_by=model gives daily
+    per-model request counts, summed over the billing period.
+  - Legacy plans: GET /api/usage reported each limit window (session, weekly)
+    as a 0-1 `usage` fraction plus per-model request counts, with no reset
+    timestamps. Used when /api/balance shows no included allowance.
 
-Reset times come from a separate, best-effort step (resets.py): a headless
+For legacy windows, reset times come from a separate, best-effort step (resets.py): a headless
 Chromium renders ollama.com/settings with the browser's ollama.com cookie. It
 runs after the usage record is written, at most every couple of hours, sooner
 only when a known reset has passed or a used window has no reset yet (knowing
@@ -27,8 +31,10 @@ Environment overrides:
   OLLAMA_API_KEY          API key (default: read from the key file)
   OLLAMA_USAGE_KEY_FILE   key file (default ~/.config/omarchy/ollama-usage/api.key)
   OLLAMA_USAGE_STATE      output file
-  OLLAMA_USAGE_ENDPOINT   endpoint URL, honored only with OLLAMA_USAGE_TEST=1 so
-                          a stray inherited variable can't send the key elsewhere
+  OLLAMA_USAGE_ENDPOINT   API base URL (e.g. http://127.0.0.1:8000/api; /balance
+                          and /usage are appended), honored only with
+                          OLLAMA_USAGE_TEST=1 so a stray inherited variable
+                          can't send the key elsewhere
 """
 
 from __future__ import annotations
@@ -36,6 +42,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import fcntl
+import http.client
 import json
 import os
 import signal
@@ -47,9 +54,16 @@ import urllib.request
 from pathlib import Path
 
 SCHEMA_VERSION = 1
-ENDPOINT = "https://ollama.com/api/usage"
+# Current plans: /api/balance holds the monthly included credits (allowance,
+# balance left, billing period) and any purchased credits; /api/usage, grouped
+# by model, holds daily request counts and spend. Legacy plans had session and
+# weekly `limits` in a bare /api/usage answer, which stays as the fallback.
+API_BASE = "https://ollama.com/api"
 if os.environ.get("OLLAMA_USAGE_TEST") == "1" and os.environ.get("OLLAMA_USAGE_ENDPOINT"):
-  ENDPOINT = os.environ["OLLAMA_USAGE_ENDPOINT"]
+  API_BASE = os.environ["OLLAMA_USAGE_ENDPOINT"].rstrip("/")
+BALANCE_URL = f"{API_BASE}/balance"
+USAGE_URL = f"{API_BASE}/usage"
+MODEL_USAGE_URL = f"{USAGE_URL}?range=30d&group_by=model"
 KEY_FILE = Path(os.environ.get("OLLAMA_USAGE_KEY_FILE") or Path.home() / ".config/omarchy/ollama-usage/api.key")
 STATE_FILE = Path(
   os.environ.get("OLLAMA_USAGE_STATE")
@@ -111,16 +125,22 @@ def api_key() -> str:
     return ""
 
 
-def fetch(key: str) -> dict:
+def fetch(key: str, url: str) -> dict:
   request = urllib.request.Request(
-    ENDPOINT,
+    url,
     headers={"Authorization": f"Bearer {key}", "Accept": "application/json", "User-Agent": "omarchy-ollama-cloud-usage-bar-widget"},
   )
-  with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SEC) as response:
-    body = response.read(MAX_RESPONSE_BYTES + 1)
+  try:
+    with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT_SEC) as response:
+      body = response.read(MAX_RESPONSE_BYTES + 1)
+  except http.client.HTTPException as error:  # e.g. a body cut off mid-read
+    raise OSError(f"broken response: {type(error).__name__}") from error
   if len(body) > MAX_RESPONSE_BYTES:
     raise ValueError("response too large")
-  payload = json.loads(body)
+  try:
+    payload = json.loads(body)
+  except RecursionError as error:
+    raise ValueError("response nested too deeply") from error
   if not isinstance(payload, dict):
     raise ValueError("unexpected response shape")
   return payload
@@ -131,7 +151,7 @@ def fraction(value) -> float | None:
     number = float(value)
   except (TypeError, ValueError):
     return None
-  if number != number or number < 0:  # NaN or negative
+  if number != number or number < 0 or number == float("inf"):  # NaN, negative, infinite
     return None
   # Defensive: accept a percent-scaled value if the API ever switches.
   return number / 100 if number > 1.5 else number
@@ -140,16 +160,96 @@ def fraction(value) -> float | None:
 def model_rows(raw) -> list[dict]:
   counts: dict[str, int] = {}
   for entry in raw if isinstance(raw, list) else []:
-    if not isinstance(entry, dict) or not entry.get("name"):
+    if not isinstance(entry, dict):
+      continue
+    # Legacy limits name a model `name`; usage groups name it `model`.
+    name = entry.get("name") or entry.get("model")
+    if not isinstance(name, str) or not name:
       continue
     try:
       requests = max(0, int(entry.get("request_count") or 0))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
       continue
-    name = str(entry["name"])
+    name = name[:200]
     counts[name] = counts.get(name, 0) + requests
-  rows = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+  rows = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:50]
   return [{"name": name, "requests": n, "tool": name.lower() in TOOLS} for name, n in rows]
+
+
+def usd(value, signed: bool = False) -> float | None:
+  """A finite dollar amount, or None. Only `signed` amounts may be negative
+  (a balance overdrawn past the allowance)."""
+  if isinstance(value, bool):
+    return None
+  try:
+    number = float(value)
+  except (TypeError, ValueError):
+    return None
+  low = -1e9 if signed else 0
+  return number if number == number and low <= number < 1e9 else None
+
+
+def period_models(usage: dict, since: dt.datetime) -> list[dict]:
+  """Per-model request counts from the daily buckets that overlap the billing
+  period (the day it started counts whole: buckets are UTC days)."""
+  groups = []
+  for bucket in usage.get("buckets") if isinstance(usage.get("buckets"), list) else []:
+    if not isinstance(bucket, dict):
+      continue
+    # A bucket ends at `until`; with none, its start is the best bound there is.
+    end = parse_time(bucket.get("until")) or parse_time(bucket.get("from"))
+    if not end or end <= since:
+      continue
+    groups.extend(bucket.get("groups") if isinstance(bucket.get("groups"), list) else [])
+  return model_rows(groups)
+
+
+def included_window(key: str, previous: dict) -> dict | None:
+  """The monthly included-credits window from /api/balance, or None when the
+  account has no included allowance (a legacy plan) or the endpoint isn't
+  there (HTTP 400/404/405), so the caller falls back to the legacy limits."""
+  try:
+    balance = fetch(key, BALANCE_URL)
+  except urllib.error.HTTPError as error:
+    if error.code in (400, 404, 405):
+      return None
+    raise
+  included = balance.get("included") if isinstance(balance.get("included"), dict) else {}
+  allowance, left = usd(included.get("allowance_usd")), usd(included.get("balance_usd"), signed=True)
+  if not allowance or left is None:
+    return None
+  period = included.get("period") if isinstance(included.get("period"), dict) else {}
+  start, end = parse_time(period.get("from")), parse_time(period.get("until"))
+  used = max(0.0, allowance - left)
+  purchased = balance.get("purchased") if isinstance(balance.get("purchased"), dict) else {}
+  window = {
+    "id": "included",
+    "title": "Included credits",
+    "percent": min(used / allowance, 1.5),
+    "detail": f"${used:,.2f} of ${allowance:,.2f} used",
+    "purchasedUsd": usd(purchased.get("balance_usd")) or 0,
+    "models": [],
+    "requests": 0,
+    # The settings-page scrape can't learn this window's reset, so it never
+    # runs for it, even when the API leaves the period out.
+    "resetSource": "api",
+  }
+  if end:
+    window["resetsAt"] = end.isoformat(timespec="seconds")
+  # Without a period start there's no telling which requests belong to it, so
+  # no model list rather than a mislabeled one.
+  if start:
+    try:
+      window["models"] = period_models(fetch(key, MODEL_USAGE_URL), start)
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError) as error:
+      # The meter stands on its own; keep the last model list rather than
+      # blanking it until the next refresh.
+      print(f"ollama-usage: model counts unavailable: {getattr(error, 'reason', error)}", file=sys.stderr)
+      for old in previous.get("windows") or []:
+        if isinstance(old, dict) and old.get("id") == "included" and isinstance(old.get("models"), list):
+          window["models"] = old["models"]
+  window["requests"] = sum(int(m.get("requests") or 0) for m in window["models"] if isinstance(m, dict))
+  return window
 
 
 def windows_from(payload: dict) -> list[dict]:
@@ -208,6 +308,9 @@ def upcoming_reset(resets: dict, window_id: str) -> str:
 def with_resets(windows: list[dict], resets: dict) -> list[dict]:
   out = []
   for window in windows:
+    if window.get("resetSource") == "api":
+      out.append(window)  # ollama.com said when; nothing to scrape
+      continue
     window = {key: value for key, value in window.items() if key != "resetsAt"}
     reset = upcoming_reset(resets, str(window.get("id")))
     if reset:
@@ -248,9 +351,10 @@ def build_record(previous: dict) -> dict:
     return {**base, "ok": False, "stale": False, "updatedAt": "", "windows": [], "authHelp": AUTH_HELP}
 
   try:
-    windows = windows_from(fetch(key))
+    included = included_window(key, previous)
+    windows = [included] if included else windows_from(fetch(key, USAGE_URL))
     if not windows:
-      raise ValueError("no usage windows in response; the API may have changed")
+      raise ValueError("no included credits or usage limits in response; the API may have changed")
     return {**base, "ok": True, "stale": False, "updatedAt": checked, "windows": with_resets(windows, read_json(RESETS_FILE))}
   except urllib.error.HTTPError as error:
     if error.code in (401, 403):
@@ -357,7 +461,8 @@ def main() -> int:
     write_atomic(record)
   if record["error"] or record["authHelp"]:
     print(f"ollama-usage: {record['error'] or record['authHelp']}", file=sys.stderr)
-  if not args.no_resets and record.get("windows"):
+  scrape_needed = any(w.get("resetSource") != "api" for w in record.get("windows") or [])
+  if not args.no_resets and scrape_needed:
     update_resets(args.resets_now)
   return 0
 
