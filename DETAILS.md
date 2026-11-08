@@ -205,10 +205,10 @@ State file: `$XDG_STATE_HOME/omarchy/ollama-usage/usage.json` (default
   "authHelp": "",      // set when the key is missing or rejected
   "windows": [
     // current plans (§3a): one window
-    {"id": "included", "title": "Included credits", "percent": 0.29,
-     "detail": "$17.53 of $60.00 used", "purchasedUsd": 0,
+    {"id": "included", "title": "Included credits", "percent": 0.25,
+     "detail": "$15.00 of $60.00 used", "purchasedUsd": 0,
      "resetsAt": "2026-11-30T19:31:46+00:00", "resetSource": "api",
-     "requests": 701, "models": [{"name": "glm-5.3", "requests": 701, "tool": false}]}
+     "requests": 120, "models": [{"name": "glm-5.3", "requests": 120, "tool": false}]}
     // legacy plans: session / weekly windows, resetsAt only from the scrape (§3b)
     {"id": "session", "title": "Session", "percent": 0.066, "requests": 53,
      "models": [{"name": "kimi-k2.7-code", "requests": 27, "tool": false}, ...]}
