@@ -53,7 +53,10 @@ Panel {
 
   function resetText(w) {
     var ms = new Date(String(w && w.resetsAt || "")).getTime() - root.nowMs
-    if (!root.resetTimes || !isFinite(ms) || ms <= 0) return ""
+    // The resetTimes setting only governs the page scrape; a reset ollama.com's
+    // API reports costs nothing to show.
+    var fromApi = !!w && w.resetSource === "api"
+    if ((!root.resetTimes && !fromApi) || !isFinite(ms) || ms <= 0) return ""
     var minutes = Math.floor(ms / 60000)
     var hours = Math.floor(minutes / 60)
     var days = Math.floor(hours / 24)
@@ -429,7 +432,7 @@ Panel {
                 PanelSectionHeader {
                   id: sectionHeader
                   anchors.left: parent.left
-                  text: String(windowSection.modelData.title || "").toUpperCase() + " · REQUESTS"
+                  text: (windowSection.modelData.id === "included" ? "THIS PERIOD" : String(windowSection.modelData.title || "").toUpperCase()) + " · REQUESTS"
                   foreground: root.foreground
                   fontFamily: root.fontFamily
                 }
@@ -519,6 +522,22 @@ Panel {
       width: parent.width
       value: limitRow.window ? Number(limitRow.window.percent || 0) : -1
       alarming: limitRow.alarming
+    }
+
+    Text {
+      textFormat: Text.PlainText
+      width: parent.width
+      visible: text !== ""
+      text: {
+        var w = limitRow.window
+        if (!w || !w.detail) return ""
+        var purchased = Number(w.purchasedUsd || 0)
+        return String(w.detail) + (purchased > 0 ? " · $" + purchased.toFixed(2) + " purchased left" : "")
+      }
+      color: root.dim
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.caption
+      elide: Text.ElideRight
     }
 
     Text {

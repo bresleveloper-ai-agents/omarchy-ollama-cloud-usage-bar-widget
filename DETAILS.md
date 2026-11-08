@@ -81,8 +81,9 @@ submission.
 ## 1. What this is
 
 `io.github.bresleveloper.ollama-cloud-usage-bar-widget` is a third-party Omarchy shell (Quickshell/QML) bar
-widget. It shows Ollama Cloud plan usage: limit windows (session, weekly, and
-monthly if the API ever returns it) and per-model request counts per window.
+widget. It shows Ollama Cloud plan usage: on current plans the monthly
+included credits (§3a), on legacy plans the limit windows (session, weekly,
+and monthly if the API ever returns it), with per-model request counts.
 Built 2026-09-28 on Omarchy 4.0.3, Ollama CLI 0.33.3, Arch Linux.
 
 Two files do the work:
@@ -149,6 +150,45 @@ Two files do the work:
   lists. `collect.py` marks them `"tool": true`. The panel lists them after
   the models, dims them, and leaves them out of the bar scaling.
 
+## 3a. Current plans: `/api/balance` + grouped `/api/usage` (added 2026-11-08)
+
+Ollama moved plans to monthly included credits. On such an account the bare
+`GET /api/usage` no longer has `limits`; it returns daily spend buckets, so
+the widget reported "no usage windows in response; the API may have changed".
+
+- `GET /api/balance` (same Bearer key), verified 2026-11-08:
+  ```json
+  {"included": {"balance_usd": 60, "allowance_usd": 60,
+                "period": {"from": "2026-10-30T19:31:46Z", "until": "2026-11-30T19:31:46Z"}},
+   "purchased": {"balance_usd": 0}}
+  ```
+  `collect.py` turns `included` into one window, id `included`, titled
+  "Included credits": `percent` is used / allowance, `detail` is
+  "$X of $Y used", `purchasedUsd` is `purchased.balance_usd`, and `resetsAt`
+  is `period.until` with `resetSource: "api"`. Windows with that source keep
+  their reset time as is and never trigger the ollama.com/settings scrape;
+  the panel shows them even with `resetTimes` Off, since they cost nothing.
+- `GET /api/usage?range=30d&group_by=model` returns `{range, scope,
+  granularity: "day", group_by, from, until, totals: {..., groups: [...]},
+  buckets: [{from, until, request_count, usage_usd, input_tokens,
+  cached_input_tokens, output_tokens, groups: [{model, request_count,
+  usage_usd, ...}]}]}`. `collect.py` sums `groups` over the buckets that end
+  after the billing period started, so the first day of the period counts
+  whole (buckets are UTC days). `range` takes `7d` (the default) and `30d`;
+  `from`, `until` and `granularity` are rejected with HTTP 400 ("unsupported
+  or repeated parameter"). Probing quickly gets HTTP 429.
+- If the grouped usage call fails, the credits meter still shows and the
+  previous model list is kept. With no `period.from` there's no model list
+  at all (it couldn't be scoped to the period). `range=30d` is the longest
+  range accepted, so on the 31st day of a period its first day drops out.
+- An overdrawn (negative) balance reads as more than 100%. If
+  `/api/balance` has no `included` allowance, or answers 400/404/405, the
+  legacy `limits` path (§3) runs instead; a 401/403 there is still a bad key.
+  How `/api/balance` answers a legacy account is unverified (Omarchy's
+  stock Agents widget says it reports session/weekly windows there, in a
+  shape not seen here, so they reach the legacy path via the missing
+  `included`).
+
 ## 4. `collect.py` contract
 
 State file: `$XDG_STATE_HOME/omarchy/ollama-usage/usage.json` (default
@@ -164,11 +204,21 @@ State file: `$XDG_STATE_HOME/omarchy/ollama-usage/usage.json` (default
   "error": "",         // short fixed message, never response bodies
   "authHelp": "",      // set when the key is missing or rejected
   "windows": [
+    // current plans (§3a): one window
+    {"id": "included", "title": "Included credits", "percent": 0.29,
+     "detail": "$17.53 of $60.00 used", "purchasedUsd": 0,
+     "resetsAt": "2026-11-30T19:31:46+00:00", "resetSource": "api",
+     "requests": 701, "models": [{"name": "glm-5.3", "requests": 701, "tool": false}]}
+    // legacy plans: session / weekly windows, resetsAt only from the scrape (§3b)
     {"id": "session", "title": "Session", "percent": 0.066, "requests": 53,
      "models": [{"name": "kimi-k2.7-code", "requests": 27, "tool": false}, ...]}
   ]
 }
 ```
+
+`resetSource: "api"` marks a window whose `resetsAt` came from ollama.com's
+API. `with_resets` leaves such windows alone, `main` never starts the scrape
+for them, and the panel shows their reset even with `resetTimes` Off.
 
 Behavior:
 
@@ -191,9 +241,13 @@ Behavior:
   symlink but must resolve to a regular file. All of this is in
   `open_regular()`/`read_regular()` in `collect.py`.
 - **Test overrides:** `OLLAMA_USAGE_STATE` changes the output file.
-  `OLLAMA_USAGE_ENDPOINT` is honored **only** with `OLLAMA_USAGE_TEST=1`, so a
+  `OLLAMA_USAGE_ENDPOINT` is the API **base** URL (`.../api`; `/balance` and
+  `/usage` are appended), honored **only** with `OLLAMA_USAGE_TEST=1`, so a
   stray inherited variable can't send the Bearer key to another host.
-- **Response handling:** capped at 1 MiB, HTTP timeout 15 s. QML also wraps
+- **Response handling:** capped at 1 MiB, HTTP timeout 15 s. A body cut off
+  mid-read counts as a network failure and over-deep JSON as a bad body, so
+  neither crashes the run. Model names must be strings (cut to 200 chars, at
+  most 50 rows); counts that aren't finite integers are skipped. QML also wraps
   the run in `timeout -k 5 30`.
 
 Test recipe (all verified on 2026-09-28):
@@ -243,6 +297,10 @@ OLLAMA_USAGE_ENDPOINT=https://nonexistent.invalid OLLAMA_USAGE_STATE=$S ./collec
   - the interval timer
   - one quick retry 60 s after a stale result
   - a 30 s `nowMs` tick while the panel is open, for "updated Xm ago"
+- **Included-credits window** (§3a): `LimitRow` adds a caption line with
+  `detail` plus any purchased credits left; the model section header reads
+  "THIS PERIOD · REQUESTS"; `resetText` shows a `resetSource: "api"` reset
+  even with `resetTimes` Off.
 - **Opening the panel** calls `refresh(false)`; the collector's 60 s throttle
   keeps that cheap.
 - **Hero icon:** tries `assets/ollama-light.svg` first on light surfaces,
@@ -357,6 +415,6 @@ implementation. Every blocker and should-fix it raised was applied:
 - A history file (append the weekly model counts each run) could later give a
   real "requests by day" chart.
 - If ollama.com adds reset timestamps to `/api/usage`, use them and drop the
-  scrape (§3b).
+  scrape (§3b). Current plans already get them from `/api/balance` (§3a).
 - A screenshot for the README lives in `preview.png`; update it when the UI
   changes.
